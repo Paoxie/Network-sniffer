@@ -1,99 +1,72 @@
+import jpcap.JpcapCaptor;
+import jpcap.JpcapSender;
 import jpcap.NetworkInterfaceAddress;
 import jpcap.NetworkInterface;
-import jpcap.JpcapCaptor;
+import jpcap.PacketReceiver;
 import jpcap.packet.Packet;
 import jpcap.packet.ARPPacket;
-import jpcap.PacketReceiver;
-import java.io.IOException;
-import jpcap.JpcapSender;
 import jpcap.packet.ICMPPacket;
 import java.net.InetAddress;
+import java.io.IOException;
+import java.io.File;
+import java.io.FileWriter;
 
 public class sample {
 
-    public static void sample(String args[]) {
+    public static void main(String args[]) throws IOException {
 
-	boolean noerr = true;
-	// getdevs();
-	while (noerr) {
-	    try {
-		int index = 2;
-		NetworkInterface[] devices = JpcapCaptor.getDeviceList();
-		JpcapCaptor captor = JpcapCaptor.openDevice(devices[index], 4096, false, 5000);
-		capture(captor);
-		tracert(captor); // doesnt work
-		
-	    } catch (IOException e) {
-		System.out.println("IOException");
-		System.err.println(e);
-		noerr = false;
-	    }
-	}
-    }
+	// for capturing
+	int index = 2;
+	NetworkInterface[] devices = JpcapCaptor.getDeviceList();
+	JpcapCaptor captor = JpcapCaptor.openDevice(devices[index], 4096, false, 5000);
+	Packet pack = captor.getPacket();
 
-    // Unfinished, create inetaddress and use in captor.setfilter
-    public static void tracert(JpcapCaptor captor) {
-	InetAddress iaddr = 
-	captor.setFilter("icmp and dst" + );
-	JpcapSender sender = captor.getJpcapSenderInstance();
+	// for sending
+	byte[] senderaddr = new byte[4];
 	ICMPPacket icmp = new ICMPPacket();
-	boolean doing = true;
-	
-	while (doing) {
-	    ICMPPacket icmppack = captor.getPacket();
-	    System.out.println("received " + icmppack);
-	    if (icmppack == null) {
-		System.out.println("Timeout");
-	    } else if (icmppack.type == ICMPPacket.ICMP_TIMXCEED){
-		icmppack.src_ip.getHostName();
-		System.out.println(icmp.hop_limit + ": " + icmppack.src_ip);
-		icmp.hop_limit++;
-	    } else if (icmppack.type == ICMPPacket.ICMP_UNREACH){
-		icmppack.src_ip.getHostName();
-		System.out.println(icmp.hop_limit+": "+ icmppack.src_ip);
-		System.exit(0);
-	    } else if (icmppack.type == ICMPPacket.ICMP_ECHOREPLY){
-		icmppack.src_ip.getHostName();
-		System.out.println(icmp.hop_limit + ": " + icmppack.src_ip);
-		System.exit(0);
-	    }
-	    sender.sendPacket(icmp);
-	    System.out.println();
-	    doing = false;
+	JpcapSender sender = captor.getJpcapSenderInstance();
+
+	try {
+	    System.out.println("try catch block");
+	    capture(captor, pack, true, args[0]);
+	} catch (IOException e) {
+	    System.out.println("IOException");
+	    System.err.println(e);
 	}
     }
 
-    public static void capture(JpcapCaptor captor) throws IOException {
+    public static void getSenderTarget(JpcapCaptor captor) throws IOException {
 
-	/*
 	captor.setFilter("arp", true);
+	ARPPacket arppack = (ARPPacket)captor.getPacket();
 	System.out.println("Sender IP Address:\t" + arppack.getSenderProtocolAddress());
 	System.out.println("Sender HW Address:\t" + arppack.getSenderHardwareAddress());
 	System.out.println("Target IP Address:\t" + arppack.getTargetProtocolAddress());
 	System.out.println("Target HW Address:\t" + arppack.getTargetHardwareAddress());
-	*/
 
-	boolean doing = true;
-	while (doing) {
-	    int index = 2;
-	    NetworkInterface[] devices = JpcapCaptor.getDeviceList();
-	    Packet pack = captor.getPacket();
-	    
-	    if (pack != null) {
+    }
 
-		System.out.println(pack);
-		System.out.println();
-		doing = false;
+    public static void capture(JpcapCaptor captor, Packet pack, boolean write, String file) throws IOException {
+	pack = captor.getPacket();
+	if (pack != null) {
+	    if (write == true) {
+		FileWriter dumpwrite = new FileWriter(file);
+		char[] c = new char[pack.data.length];
+		String packdata = new String(pack.data, "UTF-8");
+		String packheader = new String(pack.header, "UTF-8");
+		System.out.println(packdata);
+		System.out.println(packheader);
+		dumpwrite.write(packheader, 0, packheader.length());
+		dumpwrite.write("\n\n", 0, "\n\n".length());
+		dumpwrite.write(packdata, 0, packdata.length());
+		dumpwrite.write("\n", 0, "\n".length());
+		dumpwrite.close();
 	    }
 	}
     }
 
-    //Get Interfaces
-    public static void getdevs() throws IOException {
+    public static void getdevs(NetworkInterface[] devices) throws IOException {
 	//for each network interface
-	int index = 2;
-	NetworkInterface[] devices = JpcapCaptor.getDeviceList();
-	JpcapCaptor captor = JpcapCaptor.openDevice(devices[index], 4096, false, 5000);
 	for (int i = 0; i < devices.length; i++) {
 	    //print out its name and description
 	    System.out.println(i + ": " + devices[i].name + "(" + devices[i].description + ")");
